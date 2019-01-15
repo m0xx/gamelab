@@ -10,7 +10,7 @@
     "serve": "http-server -p 8000",
     "start": "run-p bundle serve",
     "copy:assets": "cp-cli assets dist/assets",
-    "copy:html": "cp-cli index.html dist/index.html"
+    "copy:html": "cp-cli live.html dist/index.html"
   },
   "keywords": [],
   "author": "",
