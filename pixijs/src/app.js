@@ -63,10 +63,14 @@ function keyboard(value) {
 
 const HEART_X = 125;
 const LANCE_X = 260;
+
+const players = {};
+
 class Fighter {
     constructor(app, textureManager, playerSide, onAttack, bgY) {
         this.app = app;
 
+        players[playerSide] = this;
         this.isDead = false;
         this.boundaries = {x: app.screen.width, y: app.screen.height}
         this.textureManager = textureManager;
@@ -106,13 +110,15 @@ class Fighter {
                 this.sprite.y += 8
             }
             if(this.state === 'RUN') {
+                const otherPlayer = isRightPlayer ? players.left : players.right;
+
                 if(this.direction === 1) {
-                    const boundX = isRightPlayer ? this.boundaries.x : this.boundaries.x - this.sprite.width;
+                    const boundX = isRightPlayer ? this.boundaries.x : otherPlayer.sprite.x - this.sprite.width;
                     this.sprite.x = Math.min(this.sprite.x + 5, boundX);
                 }
                 if(this.direction === -1) {
-                    if(playerSide === 'right') {
-                        this.sprite.x = Math.max(this.sprite.x - 5, this.sprite.width);
+                    if(isRightPlayer) {
+                        this.sprite.x = Math.max(this.sprite.x - 5, otherPlayer.sprite.x + this.sprite.width);
                     }
                     else {
                         this.sprite.x = Math.max(this.sprite.x - 5, 0);
