@@ -142,9 +142,7 @@ class Fighter {
                 this.idle();
             }
         };
-        down.press = () => {
-            this.die();
-        };
+
         left.press = () => {
             this.direction = -1;
             this.run();
