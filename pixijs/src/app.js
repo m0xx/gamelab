@@ -1,10 +1,29 @@
 import * as PIXI from 'pixi.js'
-import {Controller, Key} from './inputs'
+import shortid from 'shortid';
+import {Controller, Key, KeyboadRemoteProxy, RemoteKey} from './inputs'
 
 const HEART_X = 125;
 const LANCE_X = 260;
 
 const players = {};
+
+const socket = new WebSocket("ws://localhost:1337");
+const messageHandlers = [];
+socket.onMessage = (handler) => {
+    messageHandlers.push(handler)
+}
+socket.onmessage = (event) => {
+    console.log(event.data)
+    messageHandlers.forEach((handler) => {
+        handler(event)
+    })
+}
+
+
+function getGameIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('gameId') || null;
+}
 
 class Fighter {
     constructor(app, textureManager, playerSide, onAttack, bgY, controller) {
@@ -176,6 +195,16 @@ const titleStyle = new PIXI.TextStyle({
     wordWrapWidth: 440
 });
 
+const isHost = getGameIdFromUrl() === null;
+const gameId = isHost ? shortid() : getGameIdFromUrl();
+console.log('Game ID: ' + gameId);
+
+new KeyboadRemoteProxy(gameId, isHost ? 'p1' : 'p2', socket, {
+    up: new Key('ArrowUp'),
+    right: new Key('ArrowRight'),
+    left: new Key('ArrowLeft')
+})
+
 export default function() {
 
     // The application will create a renderer using WebGL, if possible,
@@ -253,9 +282,9 @@ export default function() {
 
         }
         const p1Controller = new Controller({
-            up: new Key('w'),
-            right: new Key('d'),
-            left: new Key('a')
+            up: new RemoteKey(gameId, 'p1', 'up', socket),
+            right: new RemoteKey(gameId, 'p1', 'right', socket),
+            left: new RemoteKey(gameId, 'p1', 'left', socket)
         });
 
         const p1 = new Fighter(app, textureManager, 'left', p1AttackHandler, bgY, p1Controller)
@@ -275,10 +304,11 @@ export default function() {
             }
         };
         const p2Controller = new Controller({
-            up: new Key('ArrowUp'),
-            right: new Key('ArrowRight'),
-            left: new Key('ArrowLeft')
+            up: new RemoteKey(gameId, 'p2', 'up', socket),
+            left: new RemoteKey(gameId, 'p2', 'left', socket),
+            right: new RemoteKey(gameId, 'p2', 'right', socket),
         });
+
         const p2 = new Fighter(app, textureManager, 'right', p2AttackHandler, bgY, p2Controller)
 
             // p2.sprite.tint = 0x00ff00;

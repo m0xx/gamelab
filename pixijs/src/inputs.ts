@@ -59,6 +59,77 @@ export class Key implements Input {
     }
 }
 
+
+
+export class RemoteKey implements Input {
+    gameId: string;
+    playerId: string;
+    socket: any;
+    key: string;
+
+    constructor(gameId, playerId, key, socket) {
+        this.gameId = gameId;
+        this.playerId = playerId;
+        this.socket = socket;
+        this.key = key;
+    }
+
+    subscribe(onPress: () => void, onRelease: () => void) {
+        const keyValue = this.key;
+        console.log('subscribe', this)
+        const that = this;
+        this.socket.onMessage((event) => {
+            console.log(event.data, that, keyValue)
+            const {
+                gameId,
+                playerId,
+                key,
+                action
+            } = JSON.parse(event.data);
+
+            if(gameId === this.gameId && playerId === this.playerId && key === this.key) {
+                if(action === 'press') {
+                    onPress();
+                }
+                else if(action === 'release') {
+                    onRelease()
+                }
+            }
+        })
+    }
+
+    unsubscribe() {
+        this.socket.onmessage = undefined;
+    }
+
+}
+
+export class KeyboadRemoteProxy {
+    constructor(gameId, playerId, socket, mappings: {[x: string]: Key}) {
+        Object.keys(mappings).forEach((key) => {
+            const pressHandler = () => {
+                socket.send(JSON.stringify({
+                    gameId,
+                    playerId,
+                    action: 'press',
+                    key
+                }))
+            }
+
+            const releaseHandler = () => {
+                socket.send(JSON.stringify({
+                    gameId,
+                    playerId,
+                    action: 'release',
+                    key
+                }))
+            }
+
+            mappings[key].subscribe(pressHandler, releaseHandler);
+        })
+    }
+}
+
 type Handler = () => void;
 
 export class Controller {
