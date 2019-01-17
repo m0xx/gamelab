@@ -1,65 +1,5 @@
 import * as PIXI from 'pixi.js'
-import Animation from './animation'
-
-function createAnimation(name) {
-    const textures = []
-    for(let i=0; i <= 6; i++) {
-        textures.push(PIXI.Texture.fromFrame(`_${name}_00${i}.png`));
-    }
-
-    const anim = new PIXI.extras.AnimatedSprite(textures);
-    anim.scale.set(0.4);
-    anim.animationSpeed = 0.4;
-
-    return anim;
-}
-
-function keyboard(value) {
-    let key = {};
-    key.value = value;
-    key.isDown = false;
-    key.isUp = true;
-    key.press = undefined;
-    key.release = undefined;
-    //The `downHandler`
-    key.downHandler = event => {
-        if (event.key === key.value) {
-            if (key.isUp && key.press) key.press();
-            key.isDown = true;
-            key.isUp = false;
-            event.preventDefault();
-        }
-    };
-
-    //The `upHandler`
-    key.upHandler = event => {
-        if (event.key === key.value) {
-            if (key.isDown && key.release) key.release();
-            key.isDown = false;
-            key.isUp = true;
-            event.preventDefault();
-        }
-    };
-
-    //Attach event listeners
-    const downListener = key.downHandler.bind(key);
-    const upListener = key.upHandler.bind(key);
-
-    window.addEventListener(
-        "keydown", downListener, false
-    );
-    window.addEventListener(
-        "keyup", upListener, false
-    );
-
-    // Detach event listeners
-    key.unsubscribe = () => {
-        window.removeEventListener("keydown", downListener);
-        window.removeEventListener("keyup", upListener);
-    };
-
-    return key;
-}
+import {Controller, Key} from './inputs'
 
 const HEART_X = 125;
 const LANCE_X = 260;
@@ -67,7 +7,7 @@ const LANCE_X = 260;
 const players = {};
 
 class Fighter {
-    constructor(app, textureManager, playerSide, onAttack, bgY) {
+    constructor(app, textureManager, playerSide, onAttack, bgY, controller) {
         this.app = app;
 
         players[playerSide] = this;
@@ -129,35 +69,32 @@ class Fighter {
 
         app.stage.addChild(this.sprite);
 
-        let up = keyboard(isRightPlayer ? 'ArrowUp' : 'e');
-        let right = keyboard(isRightPlayer ? 'ArrowRight' : 'f');
-        let down = keyboard(isRightPlayer ? 'ArrowDown' : 'd');
-        let left = keyboard(isRightPlayer ? 'ArrowLeft' : 's');
-
-        up.press = () => {
+        controller.onPress('up', () => {
             if(this.state !== 'ATTACK') {
                 this.attack();
             }
-        };
-        right.press = () => {
+        })
+
+        controller.onPress('right', () => {
             this.direction = 1;
             this.run();
-        };
-        right.release = () => {
+        })
+        controller.onRelease('right', () => {
             if(this.state === 'RUN') {
                 this.idle();
             }
-        };
+        })
 
-        left.press = () => {
+        controller.onPress('left', () => {
             this.direction = -1;
             this.run();
-        };
-        left.release = () => {
+        })
+
+        controller.onRelease('left', () => {
             if(this.state === 'RUN') {
                 this.idle();
             }
-        };
+        })
     }
     idle() {
         if(this.isDead) return;
@@ -314,7 +251,12 @@ export default function() {
                 playerWin(1)
             }
 
-        }, bgY)
+        }, bgY, new Controller({
+            up: new Key('w'),
+            right: new Key('d'),
+            left: new Key('a')
+        }))
+
         const p2 = new Fighter(app, textureManager, 'right', (p) => {
             if(gameOver) {
                 return;
@@ -328,7 +270,13 @@ export default function() {
                 gameOver = true;
                 playerWin(2)
             }
-        }, bgY)
+        }, bgY, new Controller({
+            up: new Key('ArrowUp'),
+            right: new Key('ArrowRight'),
+            left: new Key('ArrowLeft')
+        }))
+
+            // p2.sprite.tint = 0x00ff00;
 
     });
 
