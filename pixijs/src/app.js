@@ -238,7 +238,7 @@ export default function() {
         // app.stage.addChild(sprite);
 
         let gameOver = false;
-        const p1 = new Fighter(app, textureManager, 'left', (p) => {
+        const p1AttackHandler = (p) => {
             if(gameOver) {
                 return;
             }
@@ -251,13 +251,16 @@ export default function() {
                 playerWin(1)
             }
 
-        }, bgY, new Controller({
+        }
+        const p1Controller = new Controller({
             up: new Key('w'),
             right: new Key('d'),
             left: new Key('a')
-        }))
+        });
 
-        const p2 = new Fighter(app, textureManager, 'right', (p) => {
+        const p1 = new Fighter(app, textureManager, 'left', p1AttackHandler, bgY, p1Controller)
+
+        const p2AttackHandler = (p) => {
             if(gameOver) {
                 return;
             }
@@ -270,11 +273,13 @@ export default function() {
                 gameOver = true;
                 playerWin(2)
             }
-        }, bgY, new Controller({
+        };
+        const p2Controller = new Controller({
             up: new Key('ArrowUp'),
             right: new Key('ArrowRight'),
             left: new Key('ArrowLeft')
-        }))
+        });
+        const p2 = new Fighter(app, textureManager, 'right', p2AttackHandler, bgY, p2Controller)
 
             // p2.sprite.tint = 0x00ff00;
 
