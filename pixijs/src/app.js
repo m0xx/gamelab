@@ -80,7 +80,7 @@ class Fighter {
             this.run();
         })
         controller.onRelease('right', () => {
-            if(this.state === 'RUN') {
+            if(this.state === 'RUN' && this.direction === 1) {
                 this.idle();
             }
         })
@@ -91,7 +91,7 @@ class Fighter {
         })
 
         controller.onRelease('left', () => {
-            if(this.state === 'RUN') {
+            if(this.state === 'RUN' && this.direction === -1) {
                 this.idle();
             }
         })
