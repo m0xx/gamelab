@@ -1,0 +1,4 @@
+{
+  "name": "zeit-chat",
+  "builds": [{ "src": "*.js", "use": "@now/node" }]
+}

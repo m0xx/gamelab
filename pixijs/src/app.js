@@ -7,7 +7,9 @@ const LANCE_X = 260;
 
 const players = {};
 
-const socket = new WebSocket("ws://localhost:1337");
+const socket = new WebSocket(window.__WEBSOCKET_URL);
+
+
 const messageHandlers = [];
 socket.onMessage = (handler) => {
     messageHandlers.push(handler)
@@ -276,8 +278,6 @@ export default function() {
             console.log(p1.sprite.x, reachX, heartX)
             if(reachX >= heartX) {
                 p2.die();
-                gameOver = true;
-                playerWin(1)
             }
 
         }
@@ -299,8 +299,6 @@ export default function() {
             console.log(p2.sprite.x, reachX, heartX)
             if(reachX <= heartX) {
                 p1.die();
-                gameOver = true;
-                playerWin(2)
             }
         };
         const p2Controller = new Controller({
@@ -311,6 +309,18 @@ export default function() {
 
         const p2 = new Fighter(app, textureManager, 'right', p2AttackHandler, bgY, p2Controller)
 
+        app.ticker.add((delta) => {
+            if(!gameOver) {
+                if(p1.isDead) {
+                    gameOver = true;
+                    playerWin(2)
+                }
+                else if(p2.isDead) {
+                    gameOver = true;
+                    playerWin(1);
+                }
+            }
+        })
             // p2.sprite.tint = 0x00ff00;
 
     });
