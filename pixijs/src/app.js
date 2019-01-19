@@ -21,6 +21,16 @@ socket.onmessage = (event) => {
     })
 }
 
+function createShareInput(gameId) {
+    const container = document.createElement("div")
+    container.setAttribute('style', 'padding: 8px;')
+    const input = document.createElement("input");
+    input.value = `${window.location}?gameId=${gameId}`
+    input.setAttribute('style', 'width: 500px;')
+    container.appendChild(input)
+
+    document.body.prepend(container)
+}
 
 function getGameIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -169,12 +179,7 @@ class TextureManager {
     }
 }
 
-const backgrounds = [
-    {src: 'assets/bg-1.png', y: 375},
-    {src: 'assets/bg-2.png', y: 375},
-    {src: 'assets/bg-3.png', y: 375},
-    {src: 'assets/bg-4.png', y: 375}
-]
+
 
 function randomBackground() {
     const idx = Math.floor(Math.random() * backgrounds.length);
@@ -241,7 +246,9 @@ export default function() {
         // idle.animationSpeed = 0.4;
 
         // app.stage.addChild(idle);
-
+            if(isHost) {
+                createShareInput(gameId)
+            }
 
             const {src, y: bgY} = randomBackground();
             var texture = PIXI.Texture.fromImage(src);

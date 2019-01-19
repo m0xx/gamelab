@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "eventemitter3": "^3.1.0",
     "pixi.js": "^4.8.5"
   },
   "devDependencies": {
