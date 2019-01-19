@@ -4,7 +4,7 @@ import Client from "./client";
 import {TextureManager} from "./utils";
 import {Player, PlayerSide} from "./player";
 import {titleStyle} from "./style";
-import {Key} from "./inputs";
+import {Controller, Key, KeyboadRemoteProxy, RemoteKey} from "./inputs";
 
 function getGameIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -89,8 +89,30 @@ class Game {
             this.textureManager.load('RUN', 7);
             console.log('Game ID: ' + this.gameId);
 
-            this.p1 = new Player(this.app, this.textureManager, PlayerSide.LEFT)
-            this.p2 = new Player(this.app, this.textureManager, PlayerSide.RIGHT)
+            const up = new Key('ArrowUp');
+            const right = new Key('ArrowRight');
+            const left = new Key('ArrowLeft');
+
+            new KeyboadRemoteProxy(this.gameId, this.playerId, this.client, {
+                up,
+                right,
+                left
+            })
+
+            const p1Controller = new Controller({
+                up: this.isHost ? up : new RemoteKey(this.gameId, this.playerId, 'up', this.client),
+                right: this.isHost ? right : new RemoteKey(this.gameId, this.playerId, 'right', this.client),
+                left: this.isHost ? left : new RemoteKey(this.gameId, this.playerId, 'left', this.client)
+            });
+
+            const p2Controller = new Controller({
+                up: !this.isHost ? up : new RemoteKey(this.gameId, this.playerId, 'up', this.client),
+                right: !this.isHost ? right : new RemoteKey(this.gameId, this.playerId, 'right', this.client),
+                left: !this.isHost ? left : new RemoteKey(this.gameId, this.playerId, 'left', this.client)
+            });
+
+            this.p1 = new Player(this.app, this.textureManager, PlayerSide.LEFT, p1Controller)
+            this.p2 = new Player(this.app, this.textureManager, PlayerSide.RIGHT, p2Controller)
 
             this.initBackground();
             this.initScenes();
@@ -190,6 +212,11 @@ class Game {
         this.scenes.choose.addChild(this.p2.sprite)
 
         this.scenes.choose.alpha = 1;
+    }
+
+    fightScreen() {
+
+
     }
     update() {
 
