@@ -24,8 +24,14 @@ const processMessage = ({message, payload}, client) => {
 
         const game = {
             gameId,
-            player1Id: playerId,
-            player2Id: null
+            p1: {
+                id: playerId,
+                ready: false
+            },
+            p2: {
+                id: null,
+                ready: false
+            }
         }
 
         gameById[gameId] = game;
@@ -41,15 +47,14 @@ const processMessage = ({message, payload}, client) => {
         if(gameById[gameId]) {
             const game = gameById[gameId];
 
-            if(game.player2Id) {
+            if(game.p2.id) {
                 client.send(prepareMsg('game:full', gameById[gameId]))
             }
             else {
-                game.player2Id = playerId;
+                game.p2.id = playerId;
                 clientByPlayerId[playerId] = client;
 
-                client.send(prepareMsg('player:joined', gameById[gameId]));
-                clientByPlayerId[game.player1Id].send(prepareMsg('player:joined', gameById[gameId]));
+                broadcast(gameId, 'player:joined', game)
 
                 console.log('Player join')
             }
@@ -58,13 +63,38 @@ const processMessage = ({message, payload}, client) => {
             client.send(prepareMsg('game:not-found', {}))
         }
     }
-}
-wss.broadcast = function broadcast(msg, payload) {
-    wss.clients.forEach(function each(client) {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(prepareMsg(msg, payload));
+    if(message === 'cmd:player:ready') {
+        const {gameId, playerId} = payload
+        const game = gameById[gameId];
+
+        if(game.p1.id === playerId) {
+            game.p1.ready = true
         }
-    });
+        else if(game.p2.id === playerId) {
+            game.p2.ready = true
+        }
+
+        broadcast(gameId, 'player:ready', game)
+    }
+}
+function broadcast(gameId, msg, payload) {
+
+    const game = gameById[gameId]
+    if(game.p1.id) {
+        if(clientByPlayerId[game.p1.id]) {
+            clientByPlayerId[game.p1.id].send(prepareMsg(msg, payload))
+        }
+    }
+    if(game.p2.id) {
+        if(clientByPlayerId[game.p2.id]) {
+            clientByPlayerId[game.p2.id].send(prepareMsg(msg, payload))
+        }
+    }
+    // wss.clients.forEach(function each(client) {
+    //     if (client.readyState === WebSocket.OPEN) {
+    //         client.send(prepareMsg(msg, payload));
+    //     }
+    // });
 };
 
 wss.on('connection', function connection(ws) {

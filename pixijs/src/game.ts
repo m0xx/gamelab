@@ -4,6 +4,7 @@ import Client from "./client";
 import {TextureManager} from "./utils";
 import {Player, PlayerSide} from "./player";
 import {titleStyle} from "./style";
+import {Key} from "./inputs";
 
 function getGameIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -64,7 +65,8 @@ class Game {
         document.getElementById("app").appendChild(this.app.view)
 
         this.scenes = {
-            setup: {}
+            setup: {},
+            choose: {}
         }
 
         this.init();
@@ -147,6 +149,8 @@ class Game {
             this.client.once('player:joined', ({gameId, player1Id, player2Id}) => {
                 waitingText.destroy();
                 this.scenes.setup.addChild(this.p2.sprite)
+
+                this.chooseScreen();
             })
 
             this.client.send('cmd:game:create', {
@@ -163,8 +167,7 @@ class Game {
             this.client.once('player:joined', ({gameId, player1Id, player2Id}) => {
                 console.log('player joined')
 
-                this.scenes.setup.addChild(this.p1.sprite)
-                this.scenes.setup.addChild(this.p2.sprite)
+                this.chooseScreen();
             })
 
             this.client.send('cmd:player:join', {gameId: this.gameId, playerId: this.gameId})
@@ -173,6 +176,21 @@ class Game {
         this.scenes.setup.alpha = 1;
     }
 
+    chooseScreen() {
+        this.setActiveScene('choose')
+
+        const readyText = createText(this.app, "Press enter...", titleStyle)
+        this.scenes.choose.addChild(readyText)
+
+        const enter = new Key('Enter');
+        enter.once('press', () => {
+            readyText.destroy();
+        })
+        this.scenes.choose.addChild(this.p1.sprite)
+        this.scenes.choose.addChild(this.p2.sprite)
+
+        this.scenes.choose.alpha = 1;
+    }
     update() {
 
     }

@@ -1,3 +1,5 @@
+import {EventEmitter} from "eventemitter3";
+
 export enum InputAction {
     ATTACK = "ATTACK",
     RUN_RIGHT = "RUN_RIGHT",
@@ -9,23 +11,23 @@ export interface Input {
     unsubscribe();
 }
 
-export class Key implements Input {
+export class Key extends EventEmitter implements Input {
     keyValue: string;
     downHandler?: (event: any) => void;
     upHandler?: (event: any) => void;
 
     constructor(keyValue: string) {
+        super()
         this.keyValue = keyValue;
-    }
 
-    subscribe(onPress: () => void, onRelease: () => void) {
         let isDown = false;
 
         this.downHandler = event => {
+            console.log(event.key)
             if (event.key === this.keyValue) {
                 if(!isDown) {
                     isDown = true;
-                    onPress();
+                    this.emit('press')
                 }
                 event.preventDefault();
             }
@@ -35,7 +37,7 @@ export class Key implements Input {
             if (event.key === this.keyValue) {
                 if(isDown) {
                     isDown = false;
-                    onRelease();
+                    this.emit('release')
                 }
                 event.preventDefault();
             }
@@ -48,6 +50,11 @@ export class Key implements Input {
         window.addEventListener(
             "keyup", this.upHandler, false
         );
+    }
+
+    subscribe(onPress: () => void, onRelease: () => void) {
+        this.on('press', onPress)
+        this.on('release', onRelease)
     }
     unsubscribe() {
         if(this.downHandler) {
