@@ -18,6 +18,10 @@ const prepareMsg = (message, payload = {}) => {
 const gameById = {}
 const clientByPlayerId = {}
 
+
+const me = (game, playerId) => (game.p1.id === playerId ? game.p1 : game.p2);
+const opponent = (game, playerId) => (game.p1.id !== playerId ? game.p1 : game.p2);
+
 const processMessage = ({message, payload}, client) => {
     if(message === 'cmd:game:create') {
         const {gameId, playerId} = payload;
@@ -56,7 +60,7 @@ const processMessage = ({message, payload}, client) => {
 
                 broadcast(gameId, 'player:joined', game)
 
-                console.log('Player join')
+                console.log('Player join', game)
             }
         }
         else {
@@ -75,6 +79,31 @@ const processMessage = ({message, payload}, client) => {
         }
 
         broadcast(gameId, 'player:ready', game)
+
+        console.log(game)
+        if(game.p1.ready && game.p2.ready) {
+            broadcast(gameId, 'game:start', game)
+        }
+    }
+    if(message === 'cmd:key:press') {
+        const {gameId, playerId, key} = payload
+        const game = gameById[gameId];
+
+        clientByPlayerId[opponent(game, playerId).id].send(prepareMsg('player:key:press', {
+            gameId,
+            playerId,
+            key
+        }))
+    }
+    if(message === 'cmd:key:release') {
+        const {gameId, playerId, key} = payload
+        const game = gameById[gameId];
+
+        clientByPlayerId[opponent(game, playerId).id].send(prepareMsg('player:key:release', {
+            gameId,
+            playerId,
+            key
+        }))
     }
 }
 function broadcast(gameId, msg, payload) {
@@ -90,11 +119,6 @@ function broadcast(gameId, msg, payload) {
             clientByPlayerId[game.p2.id].send(prepareMsg(msg, payload))
         }
     }
-    // wss.clients.forEach(function each(client) {
-    //     if (client.readyState === WebSocket.OPEN) {
-    //         client.send(prepareMsg(msg, payload));
-    //     }
-    // });
 };
 
 wss.on('connection', function connection(ws) {

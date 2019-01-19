@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js'
 import shortid from 'shortid';
 import Client from "./client";
 import {TextureManager} from "./utils";
-import {Player, PlayerSide} from "./player";
+import {Direction, Player, PlayerSide, PlayerState} from "./player";
 import {titleStyle} from "./style";
 import {Controller, Key, KeyboadRemoteProxy, RemoteKey} from "./inputs";
 
@@ -57,16 +57,21 @@ class Game {
     textureManager: TextureManager;
     p1: Player;
     p2: Player;
+    opponentId: string;
+    boundaries: {x: number, y: number};
     constructor(wsUrl) {
         this.app = new PIXI.Application({width: 1200});
         this.client = new Client(wsUrl);
         this.textureManager = new TextureManager();
 
+        this.boundaries = {x: this.app.screen.width, y: this.app.screen.height};
+
         document.getElementById("app").appendChild(this.app.view)
 
         this.scenes = {
             setup: {},
-            choose: {}
+            choose: {},
+            fight: {}
         }
 
         this.init();
@@ -89,30 +94,14 @@ class Game {
             this.textureManager.load('RUN', 7);
             console.log('Game ID: ' + this.gameId);
 
-            const up = new Key('ArrowUp');
-            const right = new Key('ArrowRight');
-            const left = new Key('ArrowLeft');
+            this.p1 = new Player(this.app, this.textureManager, PlayerSide.LEFT)
+            this.p2 = new Player(this.app, this.textureManager, PlayerSide.RIGHT)
 
-            new KeyboadRemoteProxy(this.gameId, this.playerId, this.client, {
-                up,
-                right,
-                left
-            })
+            this.p1.setX(0);
+            this.p1.setY(350);
 
-            const p1Controller = new Controller({
-                up: this.isHost ? up : new RemoteKey(this.gameId, this.playerId, 'up', this.client),
-                right: this.isHost ? right : new RemoteKey(this.gameId, this.playerId, 'right', this.client),
-                left: this.isHost ? left : new RemoteKey(this.gameId, this.playerId, 'left', this.client)
-            });
-
-            const p2Controller = new Controller({
-                up: !this.isHost ? up : new RemoteKey(this.gameId, this.playerId, 'up', this.client),
-                right: !this.isHost ? right : new RemoteKey(this.gameId, this.playerId, 'right', this.client),
-                left: !this.isHost ? left : new RemoteKey(this.gameId, this.playerId, 'left', this.client)
-            });
-
-            this.p1 = new Player(this.app, this.textureManager, PlayerSide.LEFT, p1Controller)
-            this.p2 = new Player(this.app, this.textureManager, PlayerSide.RIGHT, p2Controller)
+            this.p2.setX(this.boundaries.x);
+            this.p2.setY(350);
 
             this.initBackground();
             this.initScenes();
@@ -168,9 +157,11 @@ class Game {
                 this.scenes.setup.addChild(this.p1.sprite)
             })
 
-            this.client.once('player:joined', ({gameId, player1Id, player2Id}) => {
+            this.client.once('player:joined', ({gameId, p1, p2}) => {
+                this.opponentId = p2.id;
                 waitingText.destroy();
                 this.scenes.setup.addChild(this.p2.sprite)
+
 
                 this.chooseScreen();
             })
@@ -186,13 +177,14 @@ class Game {
                 this.scenes.setup.addChild(fullText)
             })
 
-            this.client.once('player:joined', ({gameId, player1Id, player2Id}) => {
+            this.client.once('player:joined', ({gameId, p1, p2}) => {
+                this.opponentId = p1.id;
                 console.log('player joined')
 
                 this.chooseScreen();
             })
 
-            this.client.send('cmd:player:join', {gameId: this.gameId, playerId: this.gameId})
+            this.client.send('cmd:player:join', {gameId: this.gameId, playerId: this.playerId})
         }
 
         this.scenes.setup.alpha = 1;
@@ -201,22 +193,115 @@ class Game {
     chooseScreen() {
         this.setActiveScene('choose')
 
+        this.client.once('game:start', ({gameId, player1Id, player2Id}) => {
+            console.log('game start')
+
+            this.fightScreen();
+        })
+
         const readyText = createText(this.app, "Press enter...", titleStyle)
         this.scenes.choose.addChild(readyText)
 
         const enter = new Key('Enter');
         enter.once('press', () => {
             readyText.destroy();
+
+            this.client.send("cmd:player:ready", {
+                playerId: this.playerId,
+                gameId: this.gameId
+            })
         })
         this.scenes.choose.addChild(this.p1.sprite)
         this.scenes.choose.addChild(this.p2.sprite)
+
 
         this.scenes.choose.alpha = 1;
     }
 
     fightScreen() {
+        this.setActiveScene('fight')
 
+        this.scenes.fight.addChild(this.p1.sprite)
+        this.scenes.fight.addChild(this.p2.sprite)
 
+        const up = new Key('ArrowUp');
+        const right = new Key('ArrowRight');
+        const left = new Key('ArrowLeft');
+
+        new KeyboadRemoteProxy(this.gameId, this.playerId, this.client, {
+            up,
+            right,
+            left
+        })
+
+        const remoteController = new Controller({
+            up: new RemoteKey(this.gameId, this.opponentId, 'up', this.client),
+            right: new RemoteKey(this.gameId, this.opponentId, 'right', this.client),
+            left: new RemoteKey(this.gameId, this.opponentId, 'left', this.client)
+        });
+
+        const localController = new Controller({
+            up,
+            right,
+            left
+        });
+
+        const p1 = this.p1;
+        const p2 = this.p2;
+
+        [p1, p2].forEach((player: Player) => {
+
+            const opponent = player === p1 ? p2 : p1;
+            const controller = this.isHost && player === p1 || !this.isHost && player === p2 ? localController : remoteController;
+
+            controller.on('up:press', () => {
+                if(player.state !== PlayerState.ATTACK) {
+                    player.attack();
+                }
+            })
+
+            controller.on('right:press', () => {
+                player.direction = Direction.RIGHT;
+                player.run();
+            })
+
+            controller.on('right:release', () => {
+                if(player.state === PlayerState.RUN && player.direction === Direction.RIGHT) {
+                    player.idle();
+                }
+            })
+
+            controller.on('left:press', () => {
+                player.direction = Direction.LEFT;
+                player.run();
+            })
+
+            controller.on('left:release', () => {
+                if(player.state === PlayerState.RUN && player.direction === Direction.LEFT) {
+                    player.idle();
+                }
+            })
+
+            this.app.ticker.add((delta) => {
+                const playerSide: PlayerSide = player.playerSide;
+
+                if(player.state === PlayerState.RUN) {
+                    const x = player.getX();
+
+                    if(player.direction === Direction.RIGHT) {
+                        const boundX = playerSide === PlayerSide.LEFT ? opponent.getRect().left : this.boundaries.x;
+
+                        player.setX(Math.min(x + 10, boundX));
+                    }
+                    else if(player.direction === Direction.LEFT) {
+                        const boundX = playerSide === PlayerSide.RIGHT ? opponent.getRect().right : 0;
+                        player.setX(Math.max(x - 5, boundX));
+                    }
+                }
+            })
+        })
+
+        this.scenes.fight.alpha = 1;
     }
     update() {
 

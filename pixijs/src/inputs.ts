@@ -77,13 +77,13 @@ export class RemoteKey extends EventEmitter implements Input {
     constructor(gameId, playerId, keyName, client: Client) {
         super();
 
-        client.on('key:press', ({gameId: _gameId, playerId: _playerId, key: _key}) => {
+        client.on('player:key:press', ({gameId: _gameId, playerId: _playerId, key: _key}) => {
             if(gameId === _gameId && playerId === _playerId && keyName === _key) {
                 this.emit('press')
             }
         })
 
-        client.on('key:release', ({gameId: _gameId, playerId: _playerId, key: _key}) => {
+        client.on('player:key:release', ({gameId: _gameId, playerId: _playerId, key: _key}) => {
             if(gameId === _gameId && playerId === _playerId && keyName === _key) {
                 this.emit('release')
             }
