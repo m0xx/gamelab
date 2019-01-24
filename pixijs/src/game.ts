@@ -6,6 +6,9 @@ import {Direction, Player, PlayerSide, PlayerState} from "./player";
 import {titleStyle} from "./style";
 import {Controller, Key, KeyboadRemoteProxy, RemoteKey} from "./inputs";
 
+const DEBUG = true;
+const SINGLEPLAYER = false;
+
 function getGameIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('gameId') || null;
@@ -105,7 +108,13 @@ class Game {
 
             this.initBackground();
             this.initScenes();
-            this.setupScreen();
+
+            if(SINGLEPLAYER) {
+                this.fightScreen();
+            }
+            else {
+                this.setupScreen();
+            }
         })
     }
     initScenes() {
@@ -145,7 +154,7 @@ class Game {
 
     setupScreen() {
 
-        this.setActiveScene('setup')
+        this.setActiveScene('fight')
 
         if(this.isHost) {
             createShareLink(this.gameId);
@@ -228,17 +237,28 @@ class Game {
         const right = new Key('ArrowRight');
         const left = new Key('ArrowLeft');
 
-        new KeyboadRemoteProxy(this.gameId, this.playerId, this.client, {
-            up,
-            right,
-            left
-        })
+        let remoteController;
+        if(SINGLEPLAYER) {
+            remoteController = new Controller({
+                up: new Key('w'),
+                right: new Key('d'),
+                left: new Key('a'),
+            })
+        }
+        else {
+            new KeyboadRemoteProxy(this.gameId, this.playerId, this.client, {
+                up,
+                right,
+                left
+            })
 
-        const remoteController = new Controller({
-            up: new RemoteKey(this.gameId, this.opponentId, 'up', this.client),
-            right: new RemoteKey(this.gameId, this.opponentId, 'right', this.client),
-            left: new RemoteKey(this.gameId, this.opponentId, 'left', this.client)
-        });
+            remoteController = new Controller({
+                up: new RemoteKey(this.gameId, this.opponentId, 'up', this.client),
+                right: new RemoteKey(this.gameId, this.opponentId, 'right', this.client),
+                left: new RemoteKey(this.gameId, this.opponentId, 'left', this.client)
+            });
+        }
+
 
         const localController = new Controller({
             up,
@@ -246,21 +266,45 @@ class Game {
             left
         });
 
-        const p1 = this.p1;
-        const p2 = this.p2;
+        // TODO remove window
+        const p1 = window.__p1 = this.p1;
+        const p2 = window.__p2 = this.p2;
 
         [p1, p2].forEach((player: Player) => {
+
+            let shadow;
+            let shadowInfos;
+
+            if(DEBUG) {
+                window.__shadows = [];
+                shadow = new PIXI.Graphics();
+
+                shadow.lineStyle(2, 0x0000FF, 0.3);
+                shadow.beginFill(0xFF700B, 0.3);
+
+                const {left, right} = player.getHitBox();
+                shadow.drawRect(left, 350, right - left, player.sprite.y);
+
+
+                shadowInfos = new PIXI.Text("0 / 0", new PIXI.TextStyle({}));
+                // shadow.addChild(shadowInfos);
+
+                this.scenes.fight.addChild(shadow)
+            }
 
             const opponent = player === p1 ? p2 : p1;
             const controller = this.isHost && player === p1 || !this.isHost && player === p2 ? localController : remoteController;
 
+            console.log('Rect', player.getRect());
             controller.on('up:press', () => {
+
                 if(player.state !== PlayerState.ATTACK) {
                     player.attack();
                 }
             })
 
             controller.on('right:press', () => {
+                console.log('right:press')
                 player.direction = Direction.RIGHT;
                 player.run();
             })
@@ -285,17 +329,52 @@ class Game {
             this.app.ticker.add((delta) => {
                 const playerSide: PlayerSide = player.playerSide;
 
+                if(DEBUG) {
+                    window.__shadows.push(shadow);
+
+                    shadow.x = player.getHitBox().left
+                    // shadowInfos.text = `${player.getPosition().left} / ${player.getRectangle().left}`
+                }
+
                 if(player.state === PlayerState.RUN) {
-                    const x = player.getX();
+                    const {left, right} = opponent.getHitBox();
 
                     if(player.direction === Direction.RIGHT) {
-                        const boundX = playerSide === PlayerSide.LEFT ? opponent.getRect().left : this.boundaries.x;
+                        const boundX = playerSide === PlayerSide.LEFT ? left : this.boundaries.x;
 
-                        player.setX(Math.min(x + 10, boundX));
+                        player.setX(Math.min(player.getX() + 15, boundX));
                     }
                     else if(player.direction === Direction.LEFT) {
-                        const boundX = playerSide === PlayerSide.RIGHT ? opponent.getRect().right : 0;
-                        player.setX(Math.max(x - 5, boundX));
+                        const boundX = playerSide === PlayerSide.RIGHT ? right : 0;
+
+                        player.setX(Math.max(player.getX() - 15, boundX));
+                    }
+                }
+
+                if(player.state === PlayerState.ATTACK) {
+                    if(player.sprite.currentFrame >= 6) {
+                        if(player.playerSide === PlayerSide.LEFT) {
+                            const reachX = player.getPosition().right + player.getWeaponReachX();
+                            const opponentHeartX = opponent.getPosition().left + opponent.getHitOffsetX();
+
+                            console.log('Attack', reachX, opponentHeartX)
+                            console.log('Pos', player.getPosition(), opponent.getPosition())
+                            if(reachX >= opponentHeartX) {
+                                opponent.kill();
+                            }
+                        }
+                        else {
+                            const reachX = player.getPosition().left - player.getWeaponReachX();
+                            const opponentHeartX = opponent.getPosition().left - opponent.getHitOffsetX();
+
+                            if(reachX <= opponentHeartX) {
+                                opponent.kill();
+                            }
+                        }
+                    }
+
+                    if(player.sprite.currentFrame === 7 && !opponent.isDead()) {
+                        player.idle();
                     }
                 }
             })

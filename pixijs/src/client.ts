@@ -13,7 +13,7 @@ class Client extends EventEmitter{
         return new Promise<void>((resolve, reject) => {
             this.socket = new WebSocket(this.url);
             this.socket.onmessage = (msg) => {
-                console.log(msg)
+                console.log('Msg:', JSON.parse(msg.data))
                 const {message, payload} = JSON.parse(msg.data);
                 this.emit(message, payload)
             };

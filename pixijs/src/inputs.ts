@@ -28,7 +28,6 @@ export class Key extends EventEmitter implements Input {
         let isDown = false;
 
         this.downHandler = event => {
-            console.log(event.key)
             if (event.key === this.keyValue) {
                 if(!isDown) {
                     isDown = true;
@@ -139,14 +138,11 @@ export class Controller extends EventEmitter{
         Object.keys(this.mappings)
             .map((inputName) => {
                 const onPress = () => {
-                    console.log('onPress ' + inputName)
-
                     this.emit(`${inputName}:press`);
                     this.inputState[inputName] = true;
                 }
 
                 const onRelease = () => {
-                    console.log('onRelease ' + inputName)
                     this.emit(`${inputName}:release`);
                     this.inputState[inputName] = true;
                 }

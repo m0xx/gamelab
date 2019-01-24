@@ -26,3 +26,16 @@ player:move {}
 player:attack {}
 player:block {}
 player:die {}
+
+https://decembersoft.com/posts/redux-hero-part-4-every-hero-needs-a-villain-a-fun-introduction-to-redux-saga-js/
+
+
+    init()
+    gameloop(delta) {
+        
+    }
+    onDestroy();
+
+    connect('gameState.p2', function(state) {
+        
+    })

@@ -120,6 +120,12 @@ export class Player extends EventEmitter {
         this.sprite.animationSpeed = 0.4;
         this.sprite.gotoAndPlay(0);
     }
+    getWeaponReachX(): number {
+        return 260;
+    }
+    getHitOffsetX(): number {
+        return 125;
+    }
     isDead() {
         return this.state === PlayerState.DIE || this.state === PlayerState.DEAD;
     }
@@ -132,18 +138,32 @@ export class Player extends EventEmitter {
     getX(): number {
         return this.sprite.x;
     }
-    getRect(): {left: number, right: number} {
-        if(PlayerSide.LEFT) {
-            return {
-                left: this.sprite.x,
-                right: this.sprite.x + this.sprite.width
-            }
+    getPosition(): {left: number, right: number} {
+        const {left, width} = this.getRect();
+
+        return this.playerSide === PlayerSide.LEFT
+         ? {left, right: left + width}
+         : {left: left - width, right: left}
+    }
+    getHitBox(): {left: number, right: number} {
+        const hitbox = {x: 27, width: 132};
+        const {left, right} = this.getPosition();
+
+        return this.playerSide === PlayerSide.LEFT
+            ? {left: left + hitbox.x, right: left + hitbox.x + hitbox.width}
+            : {left: right - hitbox.x - hitbox.width, right: right - hitbox.x}
+    }
+    getRect(): {top: number, left: number, width: number, height: number} {
+        const {width, height} = this.sprite;
+
+        return {
+            top: this.sprite.y,
+            left: this.sprite.x,
+            width,
+            height
         }
-        else {
-            return {
-                left: this.sprite.x - this.sprite.width,
-                right: this.sprite.x
-            }
-        }
+    }
+    getRectangle() {
+        return this.sprite.getBounds(true);
     }
 }
