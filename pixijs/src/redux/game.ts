@@ -128,9 +128,9 @@ class Game {
             const opponent = this.players[oppositeSide];
             //
             const controller = new Controller({
-                up: new Key(side === 'left' ? 'ArrowUp' : 'w'),
-                right: new Key(side === 'left' ? 'ArrowRight' : 'd'),
-                left: new Key(side === 'left' ? 'ArrowLeft' : 'a')
+                up: new Key(side === 'right' ? 'ArrowUp' : 'w'),
+                right: new Key(side === 'right' ? 'ArrowRight' : 'd'),
+                left: new Key(side === 'right' ? 'ArrowLeft' : 'a')
             });
 
             controller.on('right:press', () => {
@@ -178,6 +178,11 @@ class Game {
                 const state = getState();
 
                 const playerState = state.gameState[side];
+
+                if(playerState.animationName === 'IDLE') {
+                    // TODO remove this hack
+                    playerDead = false;
+                }
 
                 if(playerState.animationName === 'RUN') {
                     const distance = this.distanceBetweenPlayers();

@@ -2,7 +2,8 @@ import {createStore, combineReducers, applyMiddleware} from 'redux';
 import  * as initSubscriber from 'redux-subscriber';
 
 import createSagaMiddleware from 'redux-saga'
-import { takeEvery } from 'redux-saga/effects'
+import { takeEvery, take, put } from 'redux-saga/effects'
+import {delay} from "q";
 
 const initialPlayerState = {
     x: 0,
@@ -74,6 +75,13 @@ export const playerRemoveLife = (id) => {
     }
 }
 
+export const playerHide = (id) => {
+    return {
+        type: 'PLAYER_HIDE',
+        payload: {id}
+    }
+}
+
 const selectPlayerState = (id, state) => (state.gameState[id] || null);
 
 
@@ -108,7 +116,9 @@ const reducer = (state = {}, action) => {
                 ...state,
                 [id]: {
                     ...initialPlayerState,
+                    remainingLifes: state[id] ? state[id].remainingLifes : initialPlayerState.remainingLifes,
                     visible: true,
+                    dead: false,
                     x,
                     y,
                 }
@@ -186,6 +196,17 @@ const reducer = (state = {}, action) => {
                 }
             }
         }
+        case 'PLAYER_HIDE': {
+            const {id} = payload;
+
+            return {
+                ...state,
+                [id]: {
+                    ...state[id],
+                    visible: false
+                }
+            }
+        }
     }
 
     return state;
@@ -196,55 +217,37 @@ const sagaMiddleware = createSagaMiddleware()
 
 const store = window.__store = createStore(combineReducers({gameState: reducer}), {}, applyMiddleware(sagaMiddleware));
 
-sagaMiddleware.run(watchPlayerRunSaga)
+sagaMiddleware.run(watchFightFinishRunSaga)
 
 const subscribe = initSubscriber.default(store);
 
 
-function dispatchWithTimer(action, subPath) {
-    const timer = new Date();
 
-    subscribe(subPath, () => {
-        console.log('Elapsed: ', new Date().getTime() - timer.getTime());
-    })
-
-    store.dispatch(action);
-}
-subscribe('gameState.p1', (state) => {
-    console.log(state);
-    console.log('[P1]:', selectPlayerState('p1', state));
-})
-
-subscribe('gameState.p2', (state, n) => {
-    console.log('[P2]:', selectPlayerState('p2', state));
-})
+function* watchFightFinishRunSaga() {
+    while(true) {
+        yield take('PLAYER_REMOVE_LIFE')
 
 
-const MAX_LISTENER = 1;
-for(let i=0;i < MAX_LISTENER; i++) {
-    subscribe('gameState', () => {
+        let playerLeftState = getState().gameState.left;
+        let playerRightState = getState().gameState.right;
 
-    })
-}
+        if(playerLeftState.remainingLifes === 0 || playerRightState.remainingLifes === 0) {
+            alert('Finish');
+        }
+        else {
+            yield delay(1500);
 
+            yield put(playerHide('left'));
+            yield put(playerHide('right'));
+            yield put(playerIdle('left'));
+            yield put(playerIdle('right'));
+            yield put(playerInit('left', 0, 350));
+            yield put(playerInit('right', 1200 - 288, 350));
+        }
+    }
 
-
-function* watchPlayerRunSaga() {
-    yield takeEvery('PLAYER_RUN', run)
 }
 
-function* run() {
-    console.log('RUN')
-}
-
-// dispatchWithTimer(playerInit('p1', 150, 150), 'gameState.p1');
-// dispatchWithTimer(playerInit('p2', 150, 150), 'gameState.p2');
-// dispatchWithTimer(playerRun('p1'), 'gameState.p1');
-// dispatchWithTimer(playerMove('p2', 200, 100), 'gameState.p2');
-
-window.executeRun = () => {
-    dispatchWithTimer(playerRun('p1'), 'gameState.p1');
-}
 
 export const dispatch = store.dispatch;
 export const subscribeTo = (path, handler) => {
