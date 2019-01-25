@@ -286,7 +286,6 @@ export default function() {
             if(reachX >= heartX) {
                 p2.die();
             }
-
         }
         const p1Controller = new Controller({
             up: new RemoteKey(gameId, 'p1', 'up', socket),
